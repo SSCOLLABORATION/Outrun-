@@ -7,6 +7,8 @@ public class MushroomController : MonoBehaviour
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
     public float rotationSpeed = 10f; // How fast the mushroom turns
+    public float maxTiltAngle = 15f; // Mushroom kitna aage jhukega (tilt hoga)
+
 
     [Header("Jump Settings")]
     public float jumpForce = 5f;
@@ -16,6 +18,8 @@ public class MushroomController : MonoBehaviour
     public float groundCheckDistance = 1.1f;
     public LayerMask groundLayer;
 
+   
+    
     private Rigidbody rb;
     private InputAction moveAction;
     private InputAction jumpAction;
@@ -85,14 +89,28 @@ public class MushroomController : MonoBehaviour
 
     void HandleRotation()
     {
-        // Only rotate if we have input (prevents snapping back to zero when we stop)
         Vector3 moveDirection = new Vector3(currentMoveInput.x, 0, currentMoveInput.y);
         
         if (moveDirection.magnitude > 0.1f)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-            // Slerp smoothly rotates the character instead of snapping instantly
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime);
+            // 1. Jis direction mein ja rahe hain, wahan face karein
+            Quaternion lookRotation = Quaternion.LookRotation(moveDirection);
+            
+            // 2. Aage ki taraf tilt add karein (jitna tez input, utna zyada tilt)
+            float currentTilt = moveDirection.magnitude * maxTiltAngle;
+            Quaternion tiltRotation = Quaternion.Euler(currentTilt, 0, 0); 
+            
+            // 3. Dono rotations ko combine karein
+            Quaternion finalRotation = lookRotation * tiltRotation;
+            
+            // 4. Smoothly rotate karein
+            transform.rotation = Quaternion.Slerp(transform.rotation, finalRotation, rotationSpeed * Time.fixedDeltaTime);
+        }
+        else
+        {
+            // Jab player ruk jaye, toh wapas seedha khada ho jaye (0 tilt)
+            Quaternion standStraight = Quaternion.Euler(0, transform.eulerAngles.y, 0);
+            transform.rotation = Quaternion.Slerp(transform.rotation, standStraight, rotationSpeed * Time.fixedDeltaTime);
         }
     }
 
