@@ -3,7 +3,8 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 3
-  tags: []
+  tags:
+  - Hazard
   layers:
   - Default
   - TransparentFX
@@ -11,9 +12,9 @@ TagManager:
   - Ground
   - Water
   - UI
-  - 
-  - 
-  - 
+  - Obstacle
+  - Hazard
+  - Player
   - 
   - 
   - 

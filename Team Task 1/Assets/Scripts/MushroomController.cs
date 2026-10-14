@@ -6,9 +6,8 @@ public class MushroomController : MonoBehaviour
 {
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
-    public float rotationSpeed = 10f; // How fast the mushroom turns
-    public float maxTiltAngle = 15f; // Mushroom kitna aage jhukega (tilt hoga)
-
+    public float rotationSpeed = 10f; 
+    public float maxTiltAngle = 15f; 
 
     [Header("Jump Settings")]
     public float jumpForce = 5f;
@@ -18,8 +17,9 @@ public class MushroomController : MonoBehaviour
     public float groundCheckDistance = 1.1f;
     public LayerMask groundLayer;
 
-   
-    
+    [Header("Game Loop")]
+    private Vector3 startPosition;
+
     private Rigidbody rb;
     private InputAction moveAction;
     private InputAction jumpAction;
@@ -27,11 +27,15 @@ public class MushroomController : MonoBehaviour
     private Vector2 currentMoveInput;
     private bool jumpRequested = false;
 
+    private Transform mainCam; // Camera ka reference
+
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        mainCam = Camera.main.transform; // Main camera ko dhundna
+        startPosition = transform.position;
         
-        // Setup New Input System Actions via code
+        // Input Setup
         moveAction = new InputAction("Move", binding: "<Gamepad>/leftStick");
         moveAction.AddCompositeBinding("Dpad")
             .With("Up", "<Keyboard>/w")
@@ -44,7 +48,7 @@ public class MushroomController : MonoBehaviour
             .With("Right", "<Keyboard>/rightArrow");
 
         jumpAction = new InputAction("Jump", binding: "<Keyboard>/space");
-        jumpAction.AddBinding("<Gamepad>/buttonSouth"); // A button on Xbox, Cross on PS
+        jumpAction.AddBinding("<Gamepad>/buttonSouth"); 
     }
 
     void OnEnable()
@@ -72,7 +76,6 @@ public class MushroomController : MonoBehaviour
     void FixedUpdate()
     {
         MovePlayer();
-        HandleRotation();
         ApplySnappyGravity();
 
         if (jumpRequested)
@@ -80,35 +83,41 @@ public class MushroomController : MonoBehaviour
             ExecuteJump();
         }
     }
+    
+    // Yeh function calculate karta hai ki camera kahan dekh raha hai
+    private Vector3 GetCameraRelativeMovement()
+    {
+        Vector3 camForward = mainCam.forward;
+        Vector3 camRight = mainCam.right;
+
+        // Y axis ko 0 karte hain taaki player hawa mein ya zameen ke andar na point kare
+        camForward.y = 0;
+        camRight.y = 0;
+        camForward.Normalize();
+        camRight.Normalize();
+
+        return (camForward * currentMoveInput.y + camRight * currentMoveInput.x).normalized;
+    }
 
     void MovePlayer()
     {
-        Vector3 targetVelocity = new Vector3(currentMoveInput.x * moveSpeed, rb.linearVelocity.y, currentMoveInput.y * moveSpeed);
-        rb.linearVelocity = targetVelocity;
-    }
-
-    void HandleRotation()
-    {
-        Vector3 moveDirection = new Vector3(currentMoveInput.x, 0, currentMoveInput.y);
+        Vector3 moveDirection = GetCameraRelativeMovement();
         
+        // Updated to linearVelocity
+        Vector3 targetVelocity = new Vector3(moveDirection.x * moveSpeed, rb.linearVelocity.y, moveDirection.z * moveSpeed);
+        rb.linearVelocity = targetVelocity;
+
         if (moveDirection.magnitude > 0.1f)
         {
-            // 1. Jis direction mein ja rahe hain, wahan face karein
             Quaternion lookRotation = Quaternion.LookRotation(moveDirection);
-            
-            // 2. Aage ki taraf tilt add karein (jitna tez input, utna zyada tilt)
-            float currentTilt = moveDirection.magnitude * maxTiltAngle;
+            float currentTilt = currentMoveInput.magnitude * maxTiltAngle;
             Quaternion tiltRotation = Quaternion.Euler(currentTilt, 0, 0); 
-            
-            // 3. Dono rotations ko combine karein
             Quaternion finalRotation = lookRotation * tiltRotation;
             
-            // 4. Smoothly rotate karein
             transform.rotation = Quaternion.Slerp(transform.rotation, finalRotation, rotationSpeed * Time.fixedDeltaTime);
         }
         else
         {
-            // Jab player ruk jaye, toh wapas seedha khada ho jaye (0 tilt)
             Quaternion standStraight = Quaternion.Euler(0, transform.eulerAngles.y, 0);
             transform.rotation = Quaternion.Slerp(transform.rotation, standStraight, rotationSpeed * Time.fixedDeltaTime);
         }
@@ -116,20 +125,30 @@ public class MushroomController : MonoBehaviour
 
     void ExecuteJump()
     {
+        // Updated to linearVelocity
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, jumpForce, rb.linearVelocity.z);
         jumpRequested = false;
     }
-
-    void ApplySnappyGravity()
+   void ApplySnappyGravity()
     {
+        // Updated to linearVelocity
         if (rb.linearVelocity.y < 0)
         {
             rb.linearVelocity += Vector3.up * Physics.gravity.y * (fallMultiplier - 1) * Time.fixedDeltaTime;
         }
     }
-
     bool IsGrounded()
     {
         return Physics.Raycast(transform.position, Vector3.down, groundCheckDistance, groundLayer);
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Hazard"))
+        {
+            Debug.Log("Mushroom died! Respawning...");
+            transform.position = startPosition;
+            rb.linearVelocity = Vector3.zero; // Updated to linearVelocity
+        }
     }
 }
