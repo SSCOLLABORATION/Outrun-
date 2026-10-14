@@ -151,4 +151,17 @@ public class MushroomController : MonoBehaviour
             rb.linearVelocity = Vector3.zero; // Updated to linearVelocity
         }
     }
+    // Yeh function triggers (jo physical deewar nahi hote) ke liye use hota hai
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Goal"))
+        {
+            Debug.Log("YOU WIN! Level Completed!");
+            
+            // Game jeetne par player ko rok dene ke liye:
+            moveSpeed = 0;
+            jumpForce = 0;
+            rb.linearVelocity = Vector3.zero; 
+        }
+    }
 }
