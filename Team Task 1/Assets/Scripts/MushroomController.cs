@@ -1,9 +1,15 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody))]
 public class MushroomController : MonoBehaviour
 {
+    [Header("Pit Death Settings")]
+    public float deathHeight = -10f; // Agar player ki height isse neeche gayi toh respawn hoga
+    [Header("UI Settings")]
+    public GameObject startPanel; // Naya variable Start Menu ke liye
+public GameObject winPanel;
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
     public float rotationSpeed = 10f; 
@@ -28,6 +34,13 @@ public class MushroomController : MonoBehaviour
     private bool jumpRequested = false;
 
     private Transform mainCam; // Camera ka reference
+
+
+    void Start()
+    {
+        // Game start hote hi pause rahega jab tak Start button na dabe
+        Time.timeScale = 0f; 
+    }
 
     void Awake()
     {
@@ -70,6 +83,13 @@ public class MushroomController : MonoBehaviour
         if (jumpAction.WasPressedThisFrame() && IsGrounded())
         {
             jumpRequested = true;
+        }
+        // Pit (Khai) mein girne par death logic
+        if (transform.position.y < deathHeight)
+        {
+            Debug.Log("Fell in the pit! Respawning...");
+            transform.position = startPosition;
+            rb.linearVelocity = Vector3.zero; // Girne ki speed zero kar do
         }
     }
 
@@ -152,16 +172,45 @@ public class MushroomController : MonoBehaviour
         }
     }
     // Yeh function triggers (jo physical deewar nahi hote) ke liye use hota hai
+   
+
     private void OnTriggerEnter(Collider other)
+ {
+     if (other.CompareTag("Goal"))
+     {
+         Debug.Log("YOU WIN! Level Completed!");
+         moveSpeed = 0;
+         jumpForce = 0;
+         rb.linearVelocity = Vector3.zero; 
+
+         // UI Panel ko on karna
+         if (winPanel != null)
+         {
+             winPanel.SetActive(true);
+         }
+     }
+ }
+
+ // Yeh function Restart button click hone par chalega
+ public void RestartGame()
+ {
+     SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+ }
+ // Yeh function Start button click hone par chalega
+    public void StartGame()
     {
-        if (other.CompareTag("Goal"))
+        if (startPanel != null)
         {
-            Debug.Log("YOU WIN! Level Completed!");
-            
-            // Game jeetne par player ko rok dene ke liye:
-            moveSpeed = 0;
-            jumpForce = 0;
-            rb.linearVelocity = Vector3.zero; 
+            startPanel.SetActive(false); // Menu ko hide karein
         }
+        
+        Time.timeScale = 1f; // Game ki speed normal (play) kar dein
+    }
+
+    // Yeh function Quit button click hone par chalega
+    public void QuitGame()
+    {
+        Debug.Log("Game Band Ho Gaya!");
+        Application.Quit();
     }
 }
