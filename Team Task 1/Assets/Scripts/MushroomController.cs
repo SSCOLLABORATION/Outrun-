@@ -8,8 +8,16 @@ public class MushroomController : MonoBehaviour
     [Header("Pit Death Settings")]
     public float deathHeight = -10f; // Agar player ki height isse neeche gayi toh respawn hoga
     [Header("UI Settings")]
-    public GameObject startPanel; // Naya variable Start Menu ke liye
-public GameObject winPanel;
+    public GameObject winPanel;
+    public GameObject startPanel;
+    public GameObject pausePanel; // Naya Pause UI
+    
+    private bool isPaused = false;
+    private InputAction pauseAction; // Pause input ke liye
+[Header("Audio Settings")]
+    public AudioSource audioSource;
+    public AudioClip jumpSound;
+    public AudioClip winSound;
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
     public float rotationSpeed = 10f; 
@@ -36,10 +44,17 @@ public GameObject winPanel;
     private Transform mainCam; // Camera ka reference
 
 
-    void Start()
+    public void StartGame()
     {
-        // Game start hote hi pause rahega jab tak Start button na dabe
-        Time.timeScale = 0f; 
+        if (startPanel != null)
+        {
+            startPanel.SetActive(false); 
+        }
+        Time.timeScale = 1f; 
+
+        // Mouse ko hide aur lock karein
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
     void Awake()
@@ -62,18 +77,37 @@ public GameObject winPanel;
 
         jumpAction = new InputAction("Jump", binding: "<Keyboard>/space");
         jumpAction.AddBinding("<Gamepad>/buttonSouth"); 
+
+        pauseAction = new InputAction("Pause", binding: "<Keyboard>/escape");
+        pauseAction.AddBinding("<Gamepad>/start");
+    }
+   void Start()
+    {
+        // Game start hote hi Start Menu dikhna chahiye
+        if (startPanel != null)
+        {
+            startPanel.SetActive(true); 
+        }
+        
+        Time.timeScale = 0f; // Game ko pause rakhein
+
+        // Mouse ko dikhayein taaki player click kar sake
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None; 
     }
 
     void OnEnable()
     {
         moveAction.Enable();
         jumpAction.Enable();
+        pauseAction.Enable();
     }
 
     void OnDisable()
     {
         moveAction.Disable();
         jumpAction.Disable();
+        pauseAction.Disable();
     }
 
     void Update()
@@ -90,6 +124,10 @@ public GameObject winPanel;
             Debug.Log("Fell in the pit! Respawning...");
             transform.position = startPosition;
             rb.linearVelocity = Vector3.zero; // Girne ki speed zero kar do
+        }
+        if (pauseAction.WasPressedThisFrame())
+        {
+            TogglePause();
         }
     }
 
@@ -148,6 +186,11 @@ public GameObject winPanel;
         // Updated to linearVelocity
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, jumpForce, rb.linearVelocity.z);
         jumpRequested = false;
+        // Sound play karne ka code
+        if (jumpSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(jumpSound);
+        }
     }
    void ApplySnappyGravity()
     {
@@ -187,7 +230,14 @@ public GameObject winPanel;
          if (winPanel != null)
          {
              winPanel.SetActive(true);
+             Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
          }
+         // Jeetne par sound play karna
+            if (winSound != null && audioSource != null)
+            {
+                audioSource.PlayOneShot(winSound);
+            }
      }
  }
 
@@ -197,20 +247,48 @@ public GameObject winPanel;
      SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
  }
  // Yeh function Start button click hone par chalega
-    public void StartGame()
-    {
-        if (startPanel != null)
-        {
-            startPanel.SetActive(false); // Menu ko hide karein
-        }
-        
-        Time.timeScale = 1f; // Game ki speed normal (play) kar dein
-    }
+   
 
     // Yeh function Quit button click hone par chalega
     public void QuitGame()
     {
         Debug.Log("Game Band Ho Gaya!");
         Application.Quit();
+    }
+    public void TogglePause()
+    {
+        // Agar win ya start screen open hai, toh pause kaam na kare
+        if ((winPanel != null && winPanel.activeSelf) || (startPanel != null && startPanel.activeSelf))
+            return;
+
+        isPaused = !isPaused; // Pause ka status ulta kar do (true ko false, false ko true)
+
+        if (isPaused)
+        {
+            pausePanel.SetActive(true);
+            Time.timeScale = 0f; // Game freeze karein
+
+            // Pause menu aane par mouse wapas dikhayein
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
+        else
+        {
+            pausePanel.SetActive(false);
+            Time.timeScale = 1f; // Game wapas chalu karein
+
+            // Resume hone par mouse wapas hide kar dein
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
+        }
+    }
+
+    // Yeh function Resume button ke liye hai
+    public void ResumeGame()
+    {
+        if (isPaused)
+        {
+            TogglePause();
+        }
     }
 }
